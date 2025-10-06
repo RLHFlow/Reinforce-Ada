@@ -8,7 +8,7 @@
 
 
 ## 📢 Introduction
-This repository contains the official implementation for Reinforce-Ada, an adaptive sampling framework designed to resolve the ``signal collapse'' problem in Reinforce-style algorithm with group baseline such as GRPO, making training more efficient and effective.
+This repository contains the official implementation for Reinforce-Ada, an adaptive sampling framework designed to resolve the ``signal collapse'' problem in Reinforce-style algorithm with group baselines such as GRPO, making training more efficient and effective.
 
 
 <p align="center">
@@ -19,7 +19,7 @@ This repository contains the official implementation for Reinforce-Ada, an adapt
 
 
 ### 🧐 The Challenge: Signal Collapse in GRPO
-Group Relative Policy Optimization (GRPO) is a widely-used algorithm in Reinforcement Learning from Verifiable Reward (RLVR). It calculates the advantage by normalizing rewards within a group of n responses:
+Group Relative Policy Optimization (GRPO) is a widely used algorithm in Reinforcement Learning from Verifiable Reward (RLVR). It calculates the advantage by normalizing rewards within a group of n responses:
 $$g_\theta(x,a) =  \frac{r_i - \bar{r}}{\sigma_r + \varepsilon} \cdot \nabla_\theta \log \pi_\theta(a|x).$$
 
 While effective, GRPO suffers from a critical flaw in practice: **signal collapse**. When all n samples for a prompt yield the same reward (e.g., all correct or all incorrect), **the gradient is zero** for all the responses and there is no learning signal for this prompt.
@@ -123,10 +123,10 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
     ```
 2. Start the training
    ```bash
-   # Chcek this file for more details
+   # Check this file for more details
    bash scripts/run_reinforce_ada.sh 
    ```
-   The key hyper-parameters from Reinforce-Ada are:
+   The key hyperparameters from Reinforce-Ada are:
    - ``multiround_adaptive_downsampling=True``: Use adaptive sampling.
    - ``reinforce_ada_choice=balanced``: How to balance the positive and negative prompts within a batch, could be one of [balanced, positive-focused].
    - ``global_stat_est=True``: Use global statistics to calculate the mean and std.
@@ -137,7 +137,7 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
 
 3. Evaluate
    ```bash
-   # Chcek this file for more details
+   # Check this file for more details
    bash scripts/eval_model.sh
    ```
 
