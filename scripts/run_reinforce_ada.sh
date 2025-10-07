@@ -25,8 +25,6 @@ train_prompt_mini_bsz=128
 sp_size=1
 tp_size=1
 use_dynamic_bsz=True
-actor_ppo_max_token_len=$(((max_prompt_length + max_response_length) * 2))
-infer_ppo_max_token_len=$(((max_prompt_length + max_response_length) * 3))
 offload=False
 
 max_prompt_length=$((1024 * 1))
@@ -34,6 +32,8 @@ max_response_length=$((2048))
 enable_overlong_buffer=True
 overlong_buffer_len=$((1024 * 2))
 overlong_penalty_factor=0.0
+actor_ppo_max_token_len=$(((max_prompt_length + max_response_length) * 2))
+infer_ppo_max_token_len=$(((max_prompt_length + max_response_length) * 3))
 
 loss_agg_mode="token-mean"
 temperature=1.0
