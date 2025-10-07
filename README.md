@@ -151,8 +151,7 @@ If you find our paper or code helpful, feel free to give us a citation.
 @article{reinforceada,
   title={Reinforce-Ada: An Adaptive Sampling Framework for Reinforce-Style LLM Training}, 
       author={Wei Xiong and Chenlu Ye and Baohao Liao and Hanze Dong and Xinxing Xu and Christof Monz and Jiang Bian and Nan Jiang and Tong Zhang},
-      year={2025},
       journal={arXiv preprint arXiv:2510.04996},
-  year={2025}
+      year={2025}
 }
 ```
