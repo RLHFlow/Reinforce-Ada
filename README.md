@@ -148,10 +148,13 @@ We thank [verl](https://github.com/volcengine/verl) for providing the awesome tr
 ## 📝 Citation
 If you find our paper or code helpful, feel free to give us a citation.
 ```bibtex
-@article{reinforceada,
-  title={Reinforce-Ada: An Adaptive Sampling Framework for Reinforce-Style LLM Training}, 
+@misc{xiong2025reinforceada,
+      title={Reinforce-Ada: An Adaptive Sampling Framework for Reinforce-Style LLM Training}, 
       author={Wei Xiong and Chenlu Ye and Baohao Liao and Hanze Dong and Xinxing Xu and Christof Monz and Jiang Bian and Nan Jiang and Tong Zhang},
-      journal={arXiv preprint arXiv:2510.04996},
-      year={2025}
+      year={2025},
+      eprint={2510.04996},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2510.04996}, 
 }
 ```
