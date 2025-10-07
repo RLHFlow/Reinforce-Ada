@@ -70,14 +70,14 @@ class ScriptArguments:
 
 
 def main():
-    # set seed
-    torch.manual_seed(script_args.seed)
-    np.random.seed(script_args.seed)
-
     # Arguments
     parser = HfArgumentParser(ScriptArguments)
     script_args = parser.parse_args_into_dataclasses()[0]
     print("model_path", script_args.model_name_or_path)
+
+    # set seed
+    torch.manual_seed(script_args.seed)
+    np.random.seed(script_args.seed)
 
     # Load model and tokenizer
     llm = LLM(
