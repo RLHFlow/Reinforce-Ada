@@ -3,7 +3,7 @@
 # Model used to select prompt
 model_name=Qwen/Qwen2.5-Math-1.5B
 output_dir="./data/openr1"
-mkdir -p $data_dir
+mkdir -p $output_dir
 
 # Configuration
 pass_rate=0.125
