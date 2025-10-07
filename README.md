@@ -111,6 +111,7 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
    python -m uv pip install flash-attn --no-build-isolation
    git clone https://github.com/RLHFlow/Reinforce-Ada.git
    cd ./Reinforce-Ada
+   python -n uv pip install -r requirements.txt
    python -m uv pip install -e .
    python -m uv pip install vllm==0.10.1
    ```
