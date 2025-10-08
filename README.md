@@ -108,7 +108,7 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
    pip install pip --upgrade
    pip install uv
    python -m uv pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-   python -m uv pip install flash-attn --no-build-isolation
+   python -m uv pip install flash-attn==2.8.0.post2 --no-build-isolation
    git clone https://github.com/RLHFlow/Reinforce-Ada.git
    cd ./Reinforce-Ada
    python -n uv pip install -r requirements.txt
