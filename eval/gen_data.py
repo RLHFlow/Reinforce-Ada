@@ -135,7 +135,7 @@ def main():
             {
                 "problem": ds[i]["problem"],
                 "prompt": ds[i]["prompt"],
-                "gt": ds[i]["answer"],
+                "gt": ds[i].get("gt", ds[i].get("answer")),
                 "responses": [out.text for out in output.outputs],
             }
         )
