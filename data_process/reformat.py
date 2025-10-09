@@ -47,10 +47,9 @@ if __name__ == "__main__":
         def process_fn(example, idx):
             question = example.pop("problem")
 
-            # question = question + ' ' + instruction_following
+            question = question + " " + instruction_following
 
             # We set the data_source as MATH so that we can use the reward model designed for MATH dataset
-
             reward_model = {"style": "rule", "ground_truth": example["gt"]}
 
             data = {
