@@ -145,7 +145,7 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
    You can use our open-sourced checkpoints in the following for evaluation.
 
 ## 🤗 Processed Training Sets and Checkpoints
-To ease your training effort, we offer the processed/selected training prompts and trained models in huggingface. 
+We also offer the processed/selected training prompts and trained models in huggingface. 
 
 You only need to run the following reformating command for verl training.
   ```bash
