@@ -122,6 +122,7 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
     # adjust pass_rate to 0.125 and 0.313 for hard and easy prompt selection, respectively.
     bash scripts/prepare_data.py 
     ```
+    You can use our open-sourced training sets in the following to ignore this step.
 2. Start the training
    ```bash
    # Check this file for more details
@@ -141,6 +142,7 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
    # Check this file for more details
    bash scripts/eval_model.sh
    ```
+   You can use our open-sourced checkpoints in the following for evaluation.
 
 ## 🤗 Processed Training Sets and Checkpoints
 To ease your training effort, we offer the processed/selected training prompts and trained models in huggingface. 
