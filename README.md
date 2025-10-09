@@ -167,7 +167,7 @@ You only need to run the following reformating command for verl training.
   | Training set | Which model to train? |
   | --- | --- |
   |  ```RLHFlow/reinforce_ada_hard_prompt``` | ```Qwen/Qwen2.5-Math-7B```, ```Qwen/Qwen3-4B-Instruct-2507``` |
-  | TBD | ```Qwen2.5-Math-1.5B``` |
+  | TBD | ```Qwen/Qwen2.5-Math-1.5B``` |
   | TBD | ```meta-llama/Llama-3.2-3B-Instruct``` |
 
   | Model | Algorithm | Checkpoint |
