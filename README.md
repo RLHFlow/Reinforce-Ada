@@ -168,13 +168,18 @@ You only need to run the following reformating command for verl training.
 
   | Training set | Which model to train? |
   | --- | --- |
-  |  ```RLHFlow/reinforce_ada_hard_prompt``` | ```Qwen/Qwen2.5-Math-7B```, ```Qwen/Qwen3-4B-Instruct-2507``` |
+  |  [```RLHFlow/reinforce_ada_hard_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt) | ```Qwen/Qwen2.5-Math-7B```, ```Qwen/Qwen3-4B-Instruct-2507``` |
   | TBD | ```Qwen/Qwen2.5-Math-1.5B``` |
   | TBD | ```meta-llama/Llama-3.2-3B-Instruct``` |
 
-  | Model | Algorithm | Checkpoint |
-  | --- | --- | --- |
-  | TBD | TBD | TBD |
+  | Model | Prompt level | Algorithm | Checkpoint |
+  | --- | --- | --- | --- |
+  | ```Qwen/Qwen2.5-Math-1.5B``` | easy | Reinforce-Ada-Balance | TBD |
+  | ```Qwen/Qwen2.5-Math-1.5B``` | hard | Reinforce-Ada-Balance | TBD |
+  | ```Qwen/Qwen2.5-Math-7B``` | easy | Reinforce-Ada-Balance | TBD |
+  | ```Qwen/Qwen2.5-Math-7B``` | hard | Reinforce-Ada-Balance | TBD |
+  | ```Qwen/Qwen3-4B-Instruct-2507``` | hard | Reinforce-Ada-Balance | TBD |
+  | ```meta-llama/Llama-3.2-3B-Instruct``` | easy | Reinforce-Ada-Balance | TBD |
 
 
 ## 🙏 Acknowledgement
