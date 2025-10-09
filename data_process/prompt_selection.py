@@ -36,7 +36,7 @@ def main():
     # Prompt selection
     selected_prompts = []
     for sample in ds:
-        if np.sum(sample["scores"]) <= script_args.pass_rate and np.sum(sample["scores"]) > 0:
+        if np.mean(sample["scores"]) <= script_args.pass_rate and np.sum(sample["scores"]) > 0:
             selected_prompts.append(
                 {
                     "problem": sample["prompt"],
