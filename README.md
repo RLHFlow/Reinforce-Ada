@@ -142,6 +142,36 @@ Our experiments show that Reinforce-Ada consistently improves sample efficiency 
    bash scripts/eval_model.sh
    ```
 
+## 🤗 Processed Training Sets and Checkpoints
+To ease your training effort, we offer the processed/selected training prompts and trained models in huggingface. 
+
+You only need to run the following reformating command for verl training.
+  ```bash
+  # Convert to verl training format
+  echo "Converting to verl training format..."
+  python3 data_process/reformat.py \
+      --local_dir ${output_dir} \
+      --model_name_or_path ${model_name} \
+      --data_source ${data_name} \
+
+  # Generate validation set
+  echo "Generating validation set..."
+  python3 data_process/get_validation_set.py \
+      --local_dir ${output_dir} \
+      --model_name_or_path ${model_name} 
+  ```
+
+
+  | Training set | Which model to train? |
+  | --- | --- |
+  |  ```RLHFlow/reinforce_ada_hard_prompt``` | ```Qwen/Qwen2.5-Math-7B```, ```Qwen/Qwen3-4B-Instruct-2507``` |
+  | TBD | ```Qwen2.5-Math-1.5B``` |
+  | TBD | ```meta-llama/Llama-3.2-3B-Instruct``` |
+
+  | Model | Algorithm | Checkpoint |
+  | --- | --- | --- |
+  | TBD | TBD | TBD |
+
 
 ## 🙏 Acknowledgement
 We thank [verl](https://github.com/volcengine/verl) for providing the awesome training codebase, and [Qwen2.5-Math](https://github.com/QwenLM/Qwen2.5-Math) for its robust grader.

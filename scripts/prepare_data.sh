@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Model used to select prompt
+# Model used to select prompt. Adjust the model_name to the one you want to train
 model_name=Qwen/Qwen2.5-Math-1.5B
 output_dir="./data/openr1"
 mkdir -p $output_dir
