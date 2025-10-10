@@ -165,21 +165,14 @@ You only need to run the following reformating command for verl training.
       --model_name_or_path ${model_name} 
   ```
 
-
-  | Training set | Which model to train? |
-  | --- | --- |
-  |  [```RLHFlow/reinforce_ada_hard_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt) | ```Qwen/Qwen2.5-Math-7B```, ```Qwen/Qwen3-4B-Instruct-2507``` |
-  | TBD | ```Qwen/Qwen2.5-Math-1.5B``` |
-  | TBD | ```meta-llama/Llama-3.2-3B-Instruct``` |
-
-  | Model | Prompt level | Algorithm | Checkpoint |
-  | --- | --- | --- | --- |
-  | ```Qwen/Qwen2.5-Math-1.5B``` | easy | Reinforce-Ada-Balance | TBD |
-  | ```Qwen/Qwen2.5-Math-1.5B``` | hard | Reinforce-Ada-Balance | TBD |
-  | ```Qwen/Qwen2.5-Math-7B``` | easy | Reinforce-Ada-Balance | TBD |
-  | ```Qwen/Qwen2.5-Math-7B``` | hard | Reinforce-Ada-Balance | TBD |
-  | ```Qwen/Qwen3-4B-Instruct-2507``` | hard | Reinforce-Ada-Balance | TBD |
-  | ```meta-llama/Llama-3.2-3B-Instruct``` | easy | Reinforce-Ada-Balance | TBD |
+  | Model | Prompt level | Algorithm | Training set | Checkpoint |
+  | --- | --- | --- | --- | --- |
+  | ```Qwen/Qwen2.5-Math-1.5B``` | easy | Reinforce-Ada-Balance | TBD | TBD |
+  | ```Qwen/Qwen2.5-Math-1.5B``` | hard | Reinforce-Ada-Balance | TBD | TBD |
+  | ```Qwen/Qwen2.5-Math-7B``` | easy | Reinforce-Ada-Balance | [```RLHFlow/reinforce_ada_easy_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_easy_prompt) | [```RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-easy```](https://huggingface.co/RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-easy)
+  | ```Qwen/Qwen2.5-Math-7B``` | hard | Reinforce-Ada-Balance | [```RLHFlow/reinforce_ada_hard_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt) | [```RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-hard```](https://huggingface.co/RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-hard)
+  | ```Qwen/Qwen3-4B-Instruct-2507``` | hard | Reinforce-Ada-Balance | [```RLHFlow/reinforce_ada_hard_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt) | [```RLHFlow/Qwen3-4B-Instruct-2507-Reinforce-Ada-balance-hard```](https://huggingface.co/RLHFlow/Qwen3-4B-Instruct-2507-Reinforce-Ada-balance-hard)
+  | ```meta-llama/Llama-3.2-3B-Instruct``` | hard | Reinforce-Ada-Balance | [```RLHFlow/reinforce_ada_hard_prompt_llama```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt_llama) | [```RLHFlow/Llama-3.2-3B-Instruct-Reinforce-Ada-balance-hard```](https://huggingface.co/RLHFlow/Llama-3.2-3B-Instruct-Reinforce-Ada-balance-hard)
 
 
 ## 🙏 Acknowledgement
