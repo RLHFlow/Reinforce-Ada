@@ -167,8 +167,8 @@ You only need to run the following reformating command for verl training.
 
   | Model | Prompt level | Algorithm | Training set | Checkpoint |
   | --- | --- | --- | --- | --- |
-  | ```Qwen/Qwen2.5-Math-1.5B``` | easy | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_easy_prompt_1.5b```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_simple_prompt_1-5b) | TBD |
-  | ```Qwen/Qwen2.5-Math-1.5B``` | hard | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_hard_prompt_1.5b```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt_1-5b) | TBD |
+  | ```Qwen/Qwen2.5-Math-1.5B``` | easy | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_easy_prompt_1.5b```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_simple_prompt_1-5b) | [```RLHFlow/Qwen2.5-Math-1-5B-Reinforce-Ada-balance-easy```](https://huggingface.co/RLHFlow/Qwen2.5-Math-1-5B-Reinforce-Ada-balance-easy) |
+  | ```Qwen/Qwen2.5-Math-1.5B``` | hard | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_hard_prompt_1.5b```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt_1-5b) | [```RLHFlow/Qwen2.5-Math-1-5B-Reinforce-Ada-balance-hard```](https://huggingface.co/RLHFlow/Qwen2.5-Math-1-5B-Reinforce-Ada-balance-hard) |
   | ```Qwen/Qwen2.5-Math-7B``` | easy | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_easy_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_easy_prompt) | [```RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-easy```](https://huggingface.co/RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-easy)
   | ```Qwen/Qwen2.5-Math-7B``` | hard | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_hard_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt) | [```RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-hard```](https://huggingface.co/RLHFlow/Qwen2.5-Math-7B-Reinforce-Ada-balance-hard)
   | ```Qwen/Qwen3-4B-Instruct-2507``` | hard | Reinforce-Ada-balance | [```RLHFlow/reinforce_ada_hard_prompt```](https://huggingface.co/datasets/RLHFlow/reinforce_ada_hard_prompt) | [```RLHFlow/Qwen3-4B-Instruct-2507-Reinforce-Ada-balance-hard```](https://huggingface.co/RLHFlow/Qwen3-4B-Instruct-2507-Reinforce-Ada-balance-hard)
