@@ -84,7 +84,7 @@ def main():
             sample["scores"] = all_scores[i]
             gathered_data.append(sample)
 
-    with open(script_args.dataset_path, "w", encoding="utf8") as f:
+    with open(script_args.dataset_path.split(".jsonl")[0] + "_score.jsonl", "w", encoding="utf8") as f:
         for i in range(len(gathered_data)):
             json.dump(gathered_data[i], f, ensure_ascii=False)
             f.write("\n")

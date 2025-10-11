@@ -43,7 +43,7 @@ python3 eval/compute_score.py \
 # Select prompts
 echo "Selecting prompts..."
 python3 data_process/prompt_selection.py \
-    --dataset_path ${output_dir}/merged_data.jsonl \
+    --dataset_path ${output_dir}/merged_data_score.jsonl \
     --save_path ${output_dir}/selected_data_${pass_rate}.jsonl \
     --pass_rate ${pass_rate}
 
