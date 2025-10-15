@@ -9,7 +9,9 @@
 </div>
 
 ## 🚨 News
-- [2025.10.15] We release the [Tinker implementation](https://github.com/RLHFlow/Reinforce-Ada-Tinker) of Reinforce-Ada.
+- [2025.10.15] We release the [Tinker version](https://github.com/RLHFlow/Reinforce-Ada-Tinker) for Reinforce-Ada.
+- [2025.10.07] We release the verl version (main version) for Reinforce-Ada.
+
 
 ## 📢 Introduction
 This repository contains the official implementation for Reinforce-Ada, an adaptive sampling framework designed to resolve the ``signal collapse'' problem in Reinforce-style algorithm with group baselines such as GRPO, making training more efficient and effective.
