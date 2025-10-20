@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     if ".json" not in args.data_source:
         print(f"Loading the {args.data_source} dataset from huggingface...", flush=True)
-        dataset = datasets.load_dataset(args.data_source, trust_remote_code=True)
+        dataset = datasets.load_dataset(args.data_source)
         train_dataset = dataset["train"]
     else:
         print(f"Loading the {args.data_source} dataset from local json file...", flush=True)

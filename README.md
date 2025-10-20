@@ -157,14 +157,14 @@ You only need to run the following reformating command for verl training.
   ```bash
   # Convert to verl training format
   echo "Converting to verl training format..."
-  python3 data_process/reformat.py \
+  python3 -m data_process.reformat \
       --local_dir ${output_dir} \
       --model_name_or_path ${model_name} \
       --data_source ${data_name} \
 
   # Generate validation set
   echo "Generating validation set..."
-  python3 data_process/get_validation_set.py \
+  python3 -m data_process.get_validation_set \
       --local_dir ${output_dir} \
       --model_name_or_path ${model_name} 
   ```
