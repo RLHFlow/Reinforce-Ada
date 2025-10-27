@@ -41,7 +41,7 @@ for model_name in "${models[@]}"; do
             CUDA_VISIBLE_DEVICES=$i python3 eval/gen_data.py \
                 --local_index ${i} \
                 --my_world_size ${#GPUS[@]} \
-                --model_name_or_path ${model_name} \
+                --model_name_or_path ${model_name}/merged \
                 --output_dir ${output_dir} \
                 --K $K \
                 --dataset_name_or_path ${dataset} &
