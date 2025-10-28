@@ -1,3 +1,4 @@
+import os
 import json
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -143,7 +144,8 @@ def main():
     print("I collect ", len(gathered_data), "samples")
 
     # Save to file
-    with open(script_args.output_dir + str(script_args.local_index) + ".json", "w", encoding="utf8") as f:
+    output_path = os.path.join(script_args.output_dir, f"{script_args.local_index}.json")
+    with open(output_path, "w", encoding="utf8") as f:
         for i in range(len(gathered_data)):
             json.dump(gathered_data[i], f, ensure_ascii=False)
             f.write("\n")

@@ -1,3 +1,4 @@
+import os
 import json
 import random
 from dataclasses import dataclass, field
@@ -28,7 +29,9 @@ def main():
     script_args = parser.parse_args_into_dataclasses()[0]
 
     # Merge files
-    all_dirs = [script_args.base_path + str(i) + ".json" for i in range(script_args.num_datasets)]
+    all_dirs = []
+    for i in range(script_args.num_datasets):
+        all_dirs.append(os.path.join(script_args.base_path, f"{i}.json"))
 
     gathered_data = []
     for my_dir in all_dirs:
