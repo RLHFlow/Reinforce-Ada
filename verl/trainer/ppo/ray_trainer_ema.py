@@ -380,7 +380,7 @@ class RayPPOTrainer:
 
         self._create_dataloader(train_dataset, val_dataset, collate_fn, train_sampler)
         
-        
+        self.reinforce_ada_global_stats = {}
         
 
     def _create_dataloader(self, train_dataset, val_dataset, collate_fn, train_sampler: Optional[Sampler]):
@@ -940,97 +940,121 @@ class RayPPOTrainer:
         context_batch: DataProto | None = None,
     ):
         """
-        Iterative multi-round generation with early stopping downsampling.
+        Multi round RLHF sampling with global Bayesian scheduling.
 
-        Args:
-            orig_prompt_batch: Original prompt batch to generate from
-            positive_threshold: Threshold for classifying samples as positive (reward > threshold)
-            max_rounds: Maximum number of rounds to perform
-            round_repeat: Number of samples to generate per active prompt in each round
-            final_keep_per_prompt: Final number of samples to keep per prompt (target: half positive, half negative)
-            timing_raw: Optional dict to record timing information
-            context_batch: Optional context batch for field alignment via uid
+        约定:
+          uid 已是跨 step 的全局稳定 id, 例如在 fit 中对 prompts 做 hash 得到
+          self.reinforce_ada_global_stats[uid] = {"n_total", "n_pos"} 记录历史统计
 
-        Returns:
-            Tuple of (final_batch, rounds_info) where:
-                - final_batch: DataProto with selected samples and aligned context fields
-                - rounds_info: Dict with per-round statistics
+        本函数行为:
+          1. 进入时 snapshot 一份 prev_global_stats
+          2. 本次调用内部多轮 round 的采样累加到 call_stats
+          3. effective_p_hat(uid) 只基于 prev_global_stats 计算 (只看过去)
+          4. 每轮对每个 active uid 固定预算: round_repeat
+          5. 停止条件: seen >= max(final_keep_per_prompt, ceil(1 / sqrt(p_hat(uid))))
+          6. 结束时用一次 EMA: global = ema_decay * prev_global + call_stats
+          7. 最终选样使用 balanced 或 positive_focused 策略
         """
-        # Build uid -> fields mapping from context
+
+        # 上下文对齐用
         ctx_uid_to_fields = {}
         if context_batch is not None:
             ctx_uid_to_fields = build_uid_to_fields_mapping(context_batch)
 
-        # Ensure orig_prompt_batch has uid
+        # 确保 uid 存在 (已经是全局 uid)
         ensure_uid_in_batch(orig_prompt_batch, context_batch)
         uid_arr = list(orig_prompt_batch.non_tensor_batch["uid"])
 
-        # Initialize state tracking for each uid
-        state = {uid: {"finished": False, "seen": 0, "pos": 0, "neg": 0} for uid in uid_arr}
+        # 全局统计结构
+        if not hasattr(self, "reinforce_ada_global_stats"):
+            self.reinforce_ada_global_stats = {}
 
-        # Caches for positive and negative samples per uid
+        global_stats = self.reinforce_ada_global_stats
+
+        # 初始化历史统计
+        for uid in uid_arr:
+            if uid not in global_stats:
+                global_stats[uid] = {"n_total": 0.0, "n_pos": 0.0}
+
+        # 历史快照, 本次调用里的所有逻辑只基于这个快照做决策
+        prev_global_stats = {
+            uid: {"n_total": global_stats[uid]["n_total"], "n_pos": global_stats[uid]["n_pos"]}
+            for uid in uid_arr
+        }
+
+        # 本次调用内部的累计 (多轮 round 叠加)
+        call_stats = {uid: {"n_total": 0.0, "n_pos": 0.0} for uid in uid_arr}
+
+        # 超参
+        alpha = float(self.config.algorithm.get("bayes_alpha", 1.0))
+        beta = float(self.config.algorithm.get("bayes_beta", 1.0))
+        ema_decay = float(self.config.algorithm.get("bayes_ema_decay", 0.9))
+        min_rounds = int(self.config.algorithm.get("min_adaptive_rounds", 1))
+        min_rounds = max(1, min_rounds)
+
+        # 本次调用内的局部状态
+        state = {uid: {"seen": 0, "finished": False, "pos": 0, "neg": 0} for uid in uid_arr}
         pos_cache = defaultdict(list)
         neg_cache = defaultdict(list)
-        selected_pool_batches: list[DataProto] = []
-        selected_count_by_uid = defaultdict(int)
-        # For GRPO with global statistics estimation
-        uid_full_stats = {uid: {"total_pos": 0, "total_neg": 0} for uid in uid_arr}
-        rounds_info = {"per_round": []}
 
-        # Main generation loop
+        # GRPO 统计用
+        uid_full_stats = {uid: {"total_pos": 0, "total_neg": 0} for uid in uid_arr}
+
+        rounds_info = {"per_round": []}
         active_uids = set(uid_arr)
+        uid_to_idx = {uid: i for i, uid in enumerate(uid_arr)}
+
+        def effective_p_hat(uid: str) -> float:
+            """
+            只用进入函数时的历史统计计算 p_hat(uid)
+            p_hat = (alpha + prev_pos) / (alpha + beta + prev_total)
+            """
+            prev = prev_global_stats[uid]
+            n_total = max(prev["n_total"], 0.0)
+            n_pos = max(prev["n_pos"], 0.0)
+            denom = alpha + beta + n_total
+            if denom <= 1e-8:
+                return alpha / max(alpha + beta, 1e-8)
+            return (alpha + n_pos) / denom
+
         for r in range(max_rounds):
             t0 = time.time()
             if not active_uids:
-                rounds_info["per_round"].append(
-                    {
-                        "round": r,
-                        "active_prompts": 0,
-                        "completed": 0,
-                        "finished_prompts": sum(1 for s in state.values() if s["finished"]),
-                        "sec": 0.0,
-                    }
-                )
                 break
 
-            # Create mini-batch for active prompts only
-            uid_to_idx = {uid: i for i, uid in enumerate(uid_arr)}
-            active_indices = [uid_to_idx[uid] for uid in uid_arr if uid in active_uids]
-            mini_prompt_batch = orig_prompt_batch[active_indices]
-            round_inp = mini_prompt_batch.repeat(repeat_times=round_repeat, interleave=True)
+            # 每轮每个 active uid 固定预算 round_repeat
+            per_uid_budget = {uid: round_repeat for uid in active_uids}
 
-            # Pad to be divisible by dp_size
-            dp_size = self.actor_rollout_wg.dp_size if hasattr(self.actor_rollout_wg, "dp_size") else 8
-            batch_size = len(round_inp)
-            padding_applied = False
-            if batch_size % dp_size != 0:
-                padding_needed = dp_size - (batch_size % dp_size)
-                print(
-                    f"Padding batch from {batch_size} to {batch_size + padding_needed} "
-                    f"to make it divisible by {dp_size}"
-                )
-                indices_to_repeat = list(range(batch_size - padding_needed, batch_size))
-                if len(indices_to_repeat) == 0:
-                    indices_to_repeat = [batch_size - 1] * padding_needed
-                padding_batch = round_inp[indices_to_repeat]
-                round_inp = DataProto.concat([round_inp, padding_batch])
-                padding_applied = True
+            # min_rounds 只是保证前几轮一定会跑, 既然预算固定, 这里可以不再额外处理
+            # 若你以后想做0轮快速跳过, 可以在这里再判定
 
-            # Generate sequences
+            # 组建 mini batch
+            indices = [uid_to_idx[uid] for uid in active_uids for _ in range(per_uid_budget[uid])]
+            if not indices:
+                break
+
+            mini_batch = orig_prompt_batch[indices]
+
+            # padding 以适配 dp size
+            dp_size = getattr(self.actor_rollout_wg, "dp_size", 8)
+            pad = (dp_size - len(mini_batch) % dp_size) % dp_size
+            if pad > 0:
+                mini_batch = DataProto.concat([mini_batch, mini_batch[-pad:]])
+
+            # 生成
             gen_out = (
-                self.actor_rollout_wg.generate_sequences(round_inp)
+                self.actor_rollout_wg.generate_sequences(mini_batch)
                 if not self.async_rollout_mode
-                else self.async_rollout_manager.generate_sequences(round_inp)
+                else self.async_rollout_manager.generate_sequences(mini_batch)
             )
 
-            # Remove padding if applied
-            if padding_applied:
-                gen_out = gen_out[:batch_size]
-                round_inp = round_inp[:batch_size]
+            if pad > 0:
+                gen_out = gen_out[:-pad]
+                mini_batch = mini_batch[:-pad]
 
-            # Compute rewards for this round
-            mini_with_out, seq_reward, uids_round = compute_seq_rewards_for_round(
-                mini_prompt_batch=mini_prompt_batch,
+            # 计算 reward 并按 uid 聚合
+            merged, rewards, uid_round = compute_seq_rewards_for_round(
+                mini_prompt_batch=mini_batch,
                 gen_out=gen_out,
                 ctx_uid_to_fields=ctx_uid_to_fields,
                 reward_fn=self.reward_fn,
@@ -1039,81 +1063,55 @@ class RayPPOTrainer:
                 config=self.config,
                 kl_ctrl_in_reward=self.kl_ctrl_in_reward if self.config.algorithm.use_kl_in_reward else None,
             )
-            seq_reward_np = seq_reward.detach().cpu().numpy().tolist()
 
-            # Group by uid
-            per_uid_local_idx = defaultdict(list)
-            for j, uid in enumerate(uids_round):
-                per_uid_local_idx[uid].append(j)
+            rewards_np = rewards.detach().cpu().numpy().tolist()
 
-            # Update state and cache samples
+            per_uid_idx = defaultdict(list)
+            for j, u in enumerate(uid_round):
+                per_uid_idx[u].append(j)
+
             completed_this_round = 0
+
             for uid in list(active_uids):
-                locs = per_uid_local_idx.get(uid, [])
+                locs = per_uid_idx.get(uid, [])
                 if not locs:
                     continue
-                st = state[uid]
 
-                # Cache positive and negative samples
+                st = state[uid]
+                round_total = len(locs)
+                round_pos = 0
+
                 for j in locs:
-                    if st["finished"]:
-                        break
                     st["seen"] += 1
-                    is_positive = seq_reward_np[j] > positive_threshold
-                    if is_positive:
+                    if rewards_np[j] > positive_threshold:
                         st["pos"] += 1
-                        pos_cache[uid].append(mini_with_out[[j]])
+                        round_pos += 1
+                        pos_cache[uid].append(merged[[j]])
                         uid_full_stats[uid]["total_pos"] += 1
                     else:
                         st["neg"] += 1
-                        neg_cache[uid].append(mini_with_out[[j]])
+                        neg_cache[uid].append(merged[[j]])
                         uid_full_stats[uid]["total_neg"] += 1
 
-                def downsample_cache(pos_cache, neg_cache, uid, target_total):
-                    target_pos = min(target_total // 2, len(pos_cache[uid]))
-                    target_neg = min(target_total - target_pos, len(neg_cache[uid]))
-                    if target_pos + target_neg < target_total:
-                        # Not enough total samples, adjust targets
-                        if len(pos_cache[uid]) > target_pos:
-                            additional_pos = min(len(pos_cache[uid]) - target_pos, target_total - (target_pos + target_neg))
-                            target_pos += additional_pos
-                        elif len(neg_cache[uid]) > target_neg:
-                            additional_neg = min(len(neg_cache[uid]) - target_neg, target_total - (target_pos + target_neg))
-                            target_neg += additional_neg
-                    pos_frags = pos_cache[uid][:target_pos]
-                    neg_frags = neg_cache[uid][:target_neg]
-                    merged = concat_dataproto_fragments(pos_frags + neg_frags)
-                    return merged
+                # 本次调用内部累计
+                call_stats[uid]["n_total"] += round_total
+                call_stats[uid]["n_pos"] += round_pos
 
-                # Check if we have enough samples to finish this uid
+                # 新退出条件: seen >= max(K, ceil(1 / sqrt(p_hat)))
                 if not st["finished"]:
-                    if self.config.algorithm.reinforce_ada_choice == "balanced":
-                        target_pos = final_keep_per_prompt // 2
-                        target_neg = final_keep_per_prompt - target_pos
+                    p = max(effective_p_hat(uid), 1e-6)  # 只看历史
+                    target_seen = int(math.ceil(1.0 / math.sqrt(p)))
+                    target_seen = max(target_seen, final_keep_per_prompt)
 
-                        if len(pos_cache[uid]) >= target_pos and len(neg_cache[uid]) >= target_neg:
-                            merged = downsample_cache(pos_cache, neg_cache, uid, final_keep_per_prompt)
-                            selected_pool_batches.append(merged)
-                            selected_count_by_uid[uid] = get_first_dim_size(merged)
-                            st["finished"] = True
-                            completed_this_round += 1
+                    if st["seen"] >= target_seen:
+                        st["finished"] = True
+                        completed_this_round += 1
 
-                    else:  # positive_focused
-                        assert self.config.algorithm.reinforce_ada_choice == "positive_focused", (
-                            "reinforce_ada_choice has to be one of {'balanced', 'positive_focused'}"
-                        )
-                        target_pos = 1
-                        if len(pos_cache[uid]) >= target_pos:
-                            merged = downsample_cache(pos_cache, neg_cache, uid, final_keep_per_prompt)
-                            selected_pool_batches.append(merged)
-                            selected_count_by_uid[uid] = get_first_dim_size(merged)
-                            st["finished"] = True
-                            completed_this_round += 1
-
-            # Update active set
+            # 更新活跃集合
             active_uids = {u for u in active_uids if not state[u]["finished"]}
 
-            # Record timing and stats
+            # 记录 round 信息, 注意 key 名和 fit 中一致
+            mean_reward = float(np.mean(rewards_np)) if rewards_np else 0.0
             sec = time.time() - t0
             if timing_raw is not None:
                 timing_raw[f"gen_round_{r}_sec"] = sec
@@ -1121,107 +1119,106 @@ class RayPPOTrainer:
             rounds_info["per_round"].append(
                 {
                     "round": r,
-                    "active_prompts": len(per_uid_local_idx),
+                    "active_prompts": len(per_uid_idx),  # 本轮实际有样本的 prompt 数
                     "completed": completed_this_round,
                     "finished_prompts": sum(1 for s in state.values() if s["finished"]),
-                    "reward_mean": float(np.mean(seq_reward_np)) if seq_reward_np else 0.0,
+                    "reward_mean": mean_reward,
                     "sec": round(sec, 3),
                 }
             )
+
             print(
-                f"[Gen-Round {r}] active_prompts={len(per_uid_local_idx)} "
+                f"[Gen Round {r}] active_prompts={len(per_uid_idx)} "
                 f"completed={completed_this_round} "
-                f"finished={rounds_info['per_round'][-1]['finished_prompts']} "
-                f"time={sec:.3f}s "
-                f"reward_mean={rounds_info['per_round'][-1]['reward_mean']:.4f}"
+                f"finished_prompts={rounds_info['per_round'][-1]['finished_prompts']} "
+                f"reward_mean={mean_reward:.4f} "
+                f"time={sec:.3f}s"
             )
 
             if not active_uids:
                 break
 
-        # Handle fallback for uids that didn't reach target
-        uids_that_need_fallback = {uid for uid in uid_arr if not state[uid]["finished"]}
+        # 最终选样: balanced 或 positive_focused
+        selected_batches = []
+        selected_count_by_uid = {}
 
-        for uid in uids_that_need_fallback:
-            if uid in pos_cache or uid in neg_cache:
-                pos_num = len(pos_cache[uid])
-                neg_num = len(neg_cache[uid])
-                n_rows = pos_num + neg_num
-                take = min(final_keep_per_prompt, n_rows)
+        def select_for_uid(uid: str, take: int) -> DataProto | None:
+            pos_num = len(pos_cache[uid])
+            neg_num = len(neg_cache[uid])
+            total = pos_num + neg_num
+            if total == 0:
+                return None
 
-                if n_rows < final_keep_per_prompt:
-                    print(
-                        f"[WARN] uid={uid} has {n_rows} samples, less than target "
-                        f"{final_keep_per_prompt}, but continuing"
-                    )
+            take = min(take, total)
 
-                if self.config.algorithm.reinforce_ada_choice == "positive_focused":
-                    ratio = (pos_num / n_rows) if n_rows > 0 else 0.0
-                    target_pos = math.ceil(ratio * final_keep_per_prompt)
-                    target_pos = max(min(target_pos, take - 1), 1)
-                    target_neg = take - target_pos
-
-                actual_pos = min(pos_num, target_pos)
-                actual_neg = min(neg_num, target_neg)
-
-                # If one type is insufficient, fill with the other
-                if actual_pos + actual_neg < take:
-                    if pos_num > actual_pos:
-                        additional_pos = min(pos_num - actual_pos, take - actual_pos - actual_neg)
-                        actual_pos += additional_pos
-                    elif neg_num > actual_neg:
-                        additional_neg = min(neg_num - actual_neg, take - actual_pos - actual_neg)
-                        actual_neg += additional_neg
-
-                keep_pos = actual_pos
-                keep_neg = actual_neg
-                pos_frags = pos_cache[uid][:keep_pos] if keep_pos > 0 else []
-                neg_frags = neg_cache[uid][:keep_neg] if keep_neg > 0 else []
-                frags_to_merge = pos_frags + neg_frags
-
-                if frags_to_merge:
-                    merged = concat_dataproto_fragments(frags_to_merge)
-                    selected_pool_batches.append(merged)
-                    selected_count_by_uid[uid] = get_first_dim_size(merged)
-                else:
-                    print(f"[WARN] uid={uid} frags_to_merge is empty, cannot fallback")
+            if self.config.algorithm.reinforce_ada_choice == "positive_focused":
+                ratio = pos_num / total if total > 0 else 0.0
+                target_pos = max(1, min(take - 1, int(math.ceil(ratio * take))))
+                target_neg = take - target_pos
             else:
-                print(f"[WARN] uid={uid} not in pos_cache or neg_cache, cannot fallback")
+                target_pos = take // 2
+                target_neg = take - target_pos
 
-        if not selected_pool_batches:
-            raise RuntimeError(
-                "No samples selected after early stopping. Check if threshold/rules are too strict or data is abnormal"
-            )
+            use_pos = min(pos_num, target_pos)
+            use_neg = min(neg_num, target_neg)
 
-        # Concatenate all selected samples
-        selected_batch = concat_dataproto_fragments(selected_pool_batches)
+            if use_pos + use_neg < take:
+                if pos_num > use_pos:
+                    add_pos = min(pos_num - use_pos, take - use_pos - use_neg)
+                    use_pos += add_pos
+                elif neg_num > use_neg:
+                    add_neg = min(neg_num - use_neg, take - use_pos - use_neg)
+                    use_neg += add_neg
 
-        # Align context fields to selected batch
-        _context_src = context_batch if context_batch is not None else orig_prompt_batch
-        ctx_rows = align_context_to_selected(selected_batch, _context_src)
+            pos_frags = pos_cache[uid][:use_pos] if use_pos > 0 else []
+            neg_frags = neg_cache[uid][:use_neg] if use_neg > 0 else []
+            frags = pos_frags + neg_frags
+            if not frags:
+                return None
+            return concat_dataproto_fragments(frags)
 
-        # Merge missing fields from context into selected batch
-        merge_context_fields_into_batch(selected_batch, ctx_rows)
+        for uid in uid_arr:
+            merged = select_for_uid(uid, final_keep_per_prompt)
+            if merged is not None:
+                selected_batches.append(merged)
+                selected_count_by_uid[uid] = get_first_dim_size(merged)
+            else:
+                print(f"[WARN] uid={uid} has no cached samples, skip in final batch")
 
-        final_batch = selected_batch
+        if not selected_batches:
+            raise RuntimeError("No usable samples after adaptive exploration.")
 
-        # Ensure token_level_scores exists (fallback to token_level_rewards)
+        final_batch = concat_dataproto_fragments(selected_batches)
+
+        # 对齐上下文字段
+        context_src = context_batch if context_batch is not None else orig_prompt_batch
+        ctx_rows = align_context_to_selected(final_batch, context_src)
+        merge_context_fields_into_batch(final_batch, ctx_rows)
+
+        # 确保 token_level_scores 存在
         if "token_level_scores" not in final_batch.batch and "token_level_rewards" in final_batch.batch:
             final_batch.batch["token_level_scores"] = final_batch.batch["token_level_rewards"]
 
-        # For GRPO with global stats, log pos/neg counts
-        uid_to_pos_count = {uid: stats["total_pos"] for uid, stats in uid_full_stats.items()}
-        uid_to_neg_count = {uid: stats["total_neg"] for uid, stats in uid_full_stats.items()}
-
-        if not hasattr(final_batch, "meta_info") or final_batch.meta_info is None:
+        # 写入 GRPO 统计
+        if final_batch.meta_info is None:
             final_batch.meta_info = {}
-        final_batch.meta_info["grpo_uid_to_pos_count"] = uid_to_pos_count
-        final_batch.meta_info["grpo_uid_to_neg_count"] = uid_to_neg_count
+        final_batch.meta_info["grpo_uid_to_pos_count"] = {u: s["total_pos"] for u, s in uid_full_stats.items()}
+        final_batch.meta_info["grpo_uid_to_neg_count"] = {u: s["total_neg"] for u, s in uid_full_stats.items()}
 
-        # Validate that we maintained efficient TensorDict structure
         validate_tensordict_performance(final_batch, context="final_batch")
 
+        # 本次调用结束时用一次 EMA 更新到全局
+        for uid in uid_arr:
+            prev = prev_global_stats[uid]
+            call = call_stats[uid]
+            global_stats[uid]["n_total"] = ema_decay * prev["n_total"] + call["n_total"]
+            global_stats[uid]["n_pos"] = ema_decay * prev["n_pos"] + call["n_pos"]
+
+        self.reinforce_ada_global_stats = global_stats
+
         return final_batch, rounds_info
+
+
 
     def fit(self):
         """
@@ -1290,9 +1287,18 @@ class RayPPOTrainer:
                 batch: DataProto = DataProto.from_single_dict(batch_dict)
 
                 # add uid to batch
-                batch.non_tensor_batch["uid"] = np.array(
-                    [str(uuid.uuid4()) for _ in range(len(batch.batch))], dtype=object
-                )
+                if "uid" not in batch.non_tensor_batch:
+                    prompts = batch.batch["prompts"]          # shape: [B, L]
+                    prompts_np = prompts.cpu().numpy()        # 转成 numpy
+
+                    uids = []
+                    for row in prompts_np:
+                        # 用 tuple(row) 做 hash，int 的 hash 在 Python 里是稳定的
+                        h = hash(tuple(row.tolist()))
+                        h = abs(h)                            # 去掉负号，方便存储/日志
+                        uids.append(f"p_{h}")
+
+                    batch.non_tensor_batch["uid"] = np.array(uids, dtype=object)
 
                 gen_batch = self._get_gen_batch(batch)
 
