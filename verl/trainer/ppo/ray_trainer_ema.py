@@ -1010,8 +1010,8 @@ class RayPPOTrainer:
             return (alpha + n_pos) / denom
 
         # ====== 一次性预算分配 ======
-        # 总预算: 2 * round_repeat * num_prompts
-        total_budget = 2 * round_repeat * num_prompts
+        # 总预算:  round_repeat * num_prompts
+        total_budget = round_repeat * num_prompts
         # 先保证每个 prompt 至少 1 个
         base_each = 1
         remaining_budget = max(0, total_budget - base_each * num_prompts)
