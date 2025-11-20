@@ -1288,11 +1288,11 @@ class RayPPOTrainer:
 
                 # add uid to batch
                 if "uid" not in batch.non_tensor_batch:
-                    prompts = batch.batch["prompts"]          # shape: [B, L]
-                    prompts_np = prompts.cpu().numpy()        # 转成 numpy
+                    input_ids = batch.batch["input_ids"]      # shape: [B, L]
+                    input_ids_np = input_ids.cpu().numpy()    # 转成 numpy
 
                     uids = []
-                    for row in prompts_np:
+                    for row in input_ids_np:
                         # 用 tuple(row) 做 hash，int 的 hash 在 Python 里是稳定的
                         h = hash(tuple(row.tolist()))
                         h = abs(h)                            # 去掉负号，方便存储/日志
