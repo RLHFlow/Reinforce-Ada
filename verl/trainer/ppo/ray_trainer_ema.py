@@ -987,7 +987,7 @@ class RayPPOTrainer:
 
         # 超参
         alpha = float(self.config.algorithm.get("bayes_alpha", 1.0))
-        beta = float(self.config.algorithm.get("bayes_beta", 1.0))
+        beta = float(self.config.algorithm.get("bayes_beta", 16.0))
         ema_decay = float(self.config.algorithm.get("bayes_ema_decay", 0.9))
         min_rounds = int(self.config.algorithm.get("min_adaptive_rounds", 1))
         min_rounds = max(1, min_rounds)
@@ -1100,7 +1100,7 @@ class RayPPOTrainer:
                 # 新退出条件: seen >= max(K, ceil(1 / sqrt(p_hat)))
                 if not st["finished"]:
                     p = max(effective_p_hat(uid), 1e-6)  # 只看历史
-                    target_seen = int(math.ceil(1.0 / math.sqrt(p)))
+                    target_seen = int(math.ceil(1.0 / p))
                     target_seen = max(target_seen, final_keep_per_prompt)
 
                     if st["seen"] >= target_seen:
