@@ -1102,8 +1102,17 @@ class RayPPOTrainer:
                 uid_full_stats[u]["total_pos"] += 1
             else:
                 uid_full_stats[u]["total_neg"] += 1
-
-        mean_reward = float(np.mean(rewards_np)) if rewards_np else 0.0
+                
+                
+        # 按每个 prompt 计算平均 reward
+        uid_reward_sums = defaultdict(float)
+        uid_counts = defaultdict(int)
+        for j, u in enumerate(uid_round):
+            uid_reward_sums[u] += rewards_np[j]
+            uid_counts[u] += 1
+        
+        prompt_avg_rewards = [uid_reward_sums[u] / uid_counts[u] for u in uid_arr]
+        mean_reward = float(np.mean(prompt_avg_rewards)) if prompt_avg_rewards else 0.0
         sec = time.time() - t0
         if timing_raw is not None:
             timing_raw["gen_round_0_sec"] = sec
