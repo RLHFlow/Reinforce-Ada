@@ -11,10 +11,10 @@ model_name=Qwen2.5-Math-1.5B
 
 # Wandb setting
 project_name=Reinforce-Ada
-experiment_name=Reinforce-Ada_${model_name}
+exp_name=Reinforce-Ada_${model_name}
 
 # Output
-ckpts_dir="./outputs/${project_name}/${experiment_name}"
+ckpts_dir="./outputs/${project_name}/${exp_name}"
 mkdir -p "${ckpts_dir}/logs"
 
 # Trainig setting
@@ -96,7 +96,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=${infer_ppo_max_token_len} \
     actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu=${infer_ppo_max_token_len} \
     actor_rollout_ref.rollout.name=vllm \
-    actor_rollout_ref.model.path="${MODEL_PATH}" \
+    actor_rollout_ref.model.path="${model_name_or_path}" \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.optim.lr_warmup_steps=10 \
