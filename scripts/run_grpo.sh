@@ -2,7 +2,7 @@
 
 set -xeuo pipefail
 
-export VLLM_ATTENTION_BACKEND=XFORMERS
+#export VLLM_ATTENTION_BACKEND=XFORMERS
 export WORKING_DIR="${PWD}"
 
 # Model
